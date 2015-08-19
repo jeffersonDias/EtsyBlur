@@ -2,6 +2,7 @@ package com.ms.square.android.etsyblur;
 
 import android.graphics.Bitmap;
 import android.graphics.Rect;
+import android.os.Build;
 import android.support.annotation.ColorRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.StyleRes;
@@ -9,6 +10,7 @@ import android.support.v4.app.DialogFragment;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -91,11 +93,23 @@ public class BlurDialogFragmentHelper {
 
         mRoot.addView(mBlurContainer);
 
-        Bitmap bitmap = Util.drawViewToBitmap(mRoot, mRoot.getWidth(),
-                visibleFrame.bottom, 0, visibleFrame.top, 3);
-        Bitmap blurred = Blur.apply(mFragment.getActivity(), bitmap);
-        mBlurImgView.setImageBitmap(blurred);
-        bitmap.recycle();
+        final Rect visibleFrameCopy = new Rect(visibleFrame);
+        mRoot.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                Bitmap bitmap = Util.drawViewToBitmap(mRoot, mRoot.getWidth(),
+                        visibleFrameCopy.bottom, 0, visibleFrameCopy.top, 3);
+                Bitmap blurred = Blur.apply(mFragment.getActivity(), bitmap);
+                mBlurImgView.setImageBitmap(blurred);
+                bitmap.recycle();
+
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+                    BlurDialogFragmentHelper.this.mRoot.getViewTreeObserver().removeGlobalOnLayoutListener(this);
+                } else {
+                    BlurDialogFragmentHelper.this.mRoot.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                }
+            }
+        });
 
         View view = mFragment.getView();
         if (view != null) {
